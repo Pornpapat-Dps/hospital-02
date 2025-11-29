@@ -10,12 +10,9 @@ import pool from "@/lib/db"; // 4 ระดับ // ตรวจสอบว่
  */
 export async function POST(request) {
   try {
-    console.log("--- DEBUG START ---");
     // 1. รับค่าจากหน้าบ้าน (Frontend)
     const { device_id, location, model } = await request.json();
     // 2. ทีนี้ค่อยสั่งปริ้นท์ค่าได้ เพราะตัวแปรมีอยู่จริงแล้ว
-    console.log("1. Receiving Device ID:", device_id);
-    console.log("2. Using Bucket:", influxConfig.bucket);
     // Validate: ต้องมี device_id ส่งมาเสมอ
     if (!device_id) {
       return NextResponse.json(
