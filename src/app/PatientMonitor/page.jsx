@@ -6,14 +6,14 @@ import SensorCard from "../components/moitor/SensorCard/page.jsx";
 import AssignSensorModal from "../components/moitor/AssignSensorModal/page.jsx";
 
 const DEVICE_LIST = [
-  "Hospital01",
-  "Hospital02",
+  // "Hospital01",
+  // "Hospital02",
   "Hospital03",
-  "Hospital04",
-  "Hospital05",
-  "Hospital06",
-  "Hospital07",
-  "Hospital08",
+  // "Hospital04",
+  // "Hospital05",
+  // "Hospital06",
+  // "Hospital07",
+  // "Hospital08",
 ];
 
 export default function PatientMonitor() {
