@@ -8,7 +8,7 @@ import { queryApi, influxConfig } from '../../../../lib/influxdb';
 // import { postgresClient } from '../../../lib/postgres'; 
 // ******************************************************************************
 
-
+ 
 /**
  * POST API Route สำหรับการเพิ่มอุปกรณ์ใหม่ พร้อมตรวจสอบ InfluxDB
  * Endpoint: /api/devices/add
