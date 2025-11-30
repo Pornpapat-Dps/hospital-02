@@ -1,0 +1,15 @@
+src/app/PatientMonitor/[id]/
+
+├── page.jsx                          (Main Container)
+
+└── components/
+
+    ├── PatientInfoCard.jsx           (ข้อมูลผู้ป่วย)
+
+    ├── DeviceInfoCard.jsx            (ข้อมูลอุปกรณ์)
+
+    ├── VitalStatsCards.jsx           (4 Cards: HR, Temp, Battery, Posture)
+
+    ├── ChartControls.jsx             (Tab + Time Range)
+
+    └── HistoricalChart.jsx           (กราฟ)

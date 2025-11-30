@@ -1,25 +1,42 @@
-import { Kanit } from "next/font/google"; // 1. import Kanit
+import { Kanit } from "next/font/google";
 import "./globals.css";
-// import SlidebarPage from "./Slidebar/page";
+import { SidebarProvider } from "./components/Sidebar/SidebarContext/page.jsx";
+import LayoutWrapper from "./components/Sidebar/LayoutWrapper/page";
 
-// 2. ตั้งค่า Kanit
+// ================================
+// Font Configuration
+// ================================
+
 const kanit = Kanit({
-  subsets: ["latin", "thai"], // สำคัญ: ต้องใส่ 'thai' เพื่อให้แสดงผลภาษาไทยได้ถูกต้อง
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"], // เลือกความหนาที่ต้องการ (หรือใส่ครบก็ได้)
-  variable: "--font-kanit", // ตั้งชื่อตัวแปร CSS
+  subsets: ["latin", "thai"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-kanit",
+  display: "swap",
 });
 
+// ================================
+// Metadata
+// ================================
+
 export const metadata = {
-  title: "Hospital Project",
-  description: "Hospital Management System",
+  title: "Hospital Monitoring System",
+  description: "Real-time Patient Monitoring and Management System",
+  keywords: ["hospital", "patient monitoring", "healthcare", "medical"],
 };
+
+// ================================
+// Root Layout
+// ================================
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${kanit.variable} antialiased font-sans`}> 
-        {/* 3. เรียกใช้ variable และเพิ่ม class font-sans */}
-        {/* <SlidebarPage /> */}
+    <html lang="th" className={kanit.className}>
+      <body className="bg-slate-50 text-slate-900 antialiased">
+        {/* <SidebarProvider>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
+        </SidebarProvider> */}
         {children}
       </body>
     </html>

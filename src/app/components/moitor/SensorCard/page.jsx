@@ -1,4 +1,4 @@
-import { Heart, Thermometer } from 'lucide-react';
+import { Heart, Thermometer, User, Activity, Zap, AlertTriangle } from 'lucide-react';
 import StatusBadge from '../StatusBadge/page';
 import PatientInfo from '../PatientInfo/page';
 import VitalSign from '../VitalSign/page';
@@ -9,6 +9,24 @@ const statusColorMap = {
   critical: 'bg-red-500',
   active: 'bg-green-500',
   available: 'bg-gray-300',
+};
+
+// ✅ เพิ่ม Posture Mapping
+const postureMap = {
+  0: { text: 'นอนหรือนั่งพัก', icon: User, color: 'text-blue-600' },
+  1: { text: 'ยืนหรือเดินช้า', icon: Activity, color: 'text-green-600' },
+  2: { text: 'เดินเร็วหรือวิ่งเบา', icon: Zap, color: 'text-orange-600' },
+  3: { text: 'ล้ม', icon: AlertTriangle, color: 'text-red-600' },
+};
+
+// ✅ Helper function แปลง posture
+const getPostureInfo = (posture) => {
+  const postureValue = parseInt(posture);
+  return postureMap[postureValue] || { 
+    text: 'Unknown', 
+    icon: User, 
+    color: 'text-gray-400' 
+  };
 };
 
 export default function SensorCard({ 
@@ -25,6 +43,10 @@ export default function SensorCard({
   const borderColor = statusColorMap[status] || statusColorMap.available;
   const isAvailable = status === 'available';
   const isCritical = status === 'critical';
+  
+  // ✅ ดึงข้อมูล posture
+  const postureInfo = getPostureInfo(posture);
+  const PostureIcon = postureInfo.icon;
 
   return (
     <div className={`rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl ${
@@ -71,17 +93,31 @@ export default function SensorCard({
               />
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-              <span className="font-medium">
-                Posture: <span className="text-gray-700">{posture || 'Unknown'}</span>
-              </span>
+            {/* Footer - แสดง Posture แบบใหม่ */}
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1.5">
+                <PostureIcon className={`w-4 h-4 ${postureInfo.color}`} />
+                <span className="font-medium text-gray-500">Posture:</span>
+                <span className={`font-semibold ${postureInfo.color}`}>
+                  {postureInfo.text}
+                </span>
+              </div>
               <span className="text-gray-400">{timestamp || '--:--'}</span>
             </div>
 
+            {/* ⚠️ Alert สำหรับกรณีล้ม (posture = 3) */}
+            {parseInt(posture) === 3 && (
+              <div className="mt-3 bg-red-50 border-l-4 border-red-500 p-3 rounded-lg flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600 animate-pulse" />
+                <span className="text-sm font-bold text-red-700">
+                  🚨 ตรวจพบการล้ม! กรุณาตรวจสอบด่วน
+                </span>
+              </div>
+            )}
+
             {/* Action Button */}
             <a 
-              href={`/patient/${id}`} 
+              href={`/PatientMonitor/${id}`} 
               className="mt-3 block text-center bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-800 text-sm font-semibold py-2 rounded-lg transition-colors"
             >
               View Details →

@@ -1,214 +1,259 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Activity, Loader2, WifiOff, AlertCircle, Plus } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { 
+  Activity, Loader2, WifiOff, AlertCircle, Plus, 
+  Search, Filter, Clock, BellRing, LayoutGrid, List
+} from "lucide-react";
 import SensorCard from "../components/moitor/SensorCard/page.jsx";
 import AssignSensorModal from "../components/moitor/AssignSensorModal/page.jsx";
-
-const DEVICE_LIST = [
-  // "Hospital01",
-  // "Hospital02",
-  "Hospital03",
-  // "Hospital04",
-  // "Hospital05",
-  // "Hospital06",
-  // "Hospital07",
-  // "Hospital08",
-];
 
 export default function PatientMonitor() {
   const [sensors, setSensors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // UX State
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("all"); // all, critical, active, available
 
-  // ใช้ useCallback เพื่อป้องกัน infinite loop
+  // --- 1. Logic & Data Fetching (คงเดิมแต่จัดระเบียบ) ---
   const fetchSensors = useCallback(async () => {
     try {
-      const promises = DEVICE_LIST.map(async (deviceId) => {
-        try {
-          const res = await fetch(`/api/devices?device=${deviceId}&range=-5m`);
+      // setLoading(true); // ไม่ต้อง set true ทุกครั้งที่ refresh เพื่อไม่ให้จอกระพริบ
+      const response = await fetch('/api/assign-device');
+      
+      if (!response.ok) throw new Error('Failed');
 
-          if (!res.ok) return null;
+      const result = await response.json();
 
-          const rawData = await res.json();
+      if (!result.success || !result.data) {
+        setSensors([]);
+        setError(true);
+        return;
+      }
 
-          // ถ้าไม่มีข้อมูล แสดงว่า device available
-          if (!rawData.success || !rawData.data || rawData.data.length === 0) {
-            return {
-              id: deviceId,
-              status: "available",
-              patientName: "No Data",
-              heartRate: 0,
-              temperature: 0,
-              batteryPercent: 0,
-              posture: "Unknown",
-              timestamp: "--:--",
-            };
-          }
-
-          const latestData = rawData.data[0];
-
-          // กำหนด status ตาม heart rate
-          let status = "active";
-          if (latestData.heart_rate > 100 || latestData.heart_rate < 60) {
-            status = "critical";
-          } else if (latestData.heart_rate === 0) {
-            status = "available";
-          }
-
-          return {
-            id: deviceId,
-            status: status,
-            patientName: latestData.patient_name || "Unknown Patient",
-            hn: latestData.hn || "-",
-            heartRate: latestData.heart_rate || 0,
-            temperature: latestData.temperature || 0,
-            batteryPercent: latestData.BatteryPercent || 0,
-            posture: latestData.posture || "Unknown",
-            sequence: latestData.sequence || 0,
-            timestamp: latestData.timestamp || latestData._time || "--:--",
-          };
-        } catch (innerError) {
-          console.warn(`Failed to fetch ${deviceId}:`, innerError);
-          return {
-            id: deviceId,
-            status: "available",
-            patientName: "Connection Lost",
-            heartRate: 0,
-            temperature: 0,
-            batteryPercent: 0,
-            posture: "Unknown",
-            timestamp: "--:--",
-          };
+      const formattedSensors = result.data.map((device) => {
+        const sensorData = device.sensor_data || {};
+        let status = 'available';
+        
+        if (device.assignment_status === 'active') {
+          const heartRate = sensorData.heart_rate || 0;
+          if (heartRate === 0) status = 'inactive';
+          else if (heartRate > 100 || heartRate < 60) status = 'critical';
+          else status = 'active';
         }
+
+        return {
+          id: device.device_id,
+          status: status,
+          patientName: device.patient_name || 'ว่าง',
+          hn: device.hn || '-',
+          heartRate: sensorData.heart_rate || 0,
+          temperature: sensorData.temperature || 0,
+          batteryPercent: sensorData.battery_percent || 0,
+          posture: sensorData.posture || 0,
+          sequence: device.sequence || 0,
+          timestamp: sensorData.last_seen || '--:--',
+          location: device.location || '-',
+          model: device.model || '-',
+          gender: device.gender || '-',
+          date_of_birth: device.date_of_birth || '-',
+          assigned_at: device.assigned_at || null,
+        };
       });
 
-      const results = await Promise.all(promises);
-      const validResults = results.filter((item) => item !== null);
-
-      setSensors(validResults);
+      setSensors(formattedSensors);
       setError(false);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Error:", err);
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, []); // ไม่มี dependency
+  }, []);
 
-  // Handler สำหรับ Assign Sensor
-  const handleAssign = async (deviceId, patientData) => {
+  const handleAssign = async (assignData) => {
+    // ... (Code เดิมสำหรับการ Assign) ...
     try {
-      // TODO: เรียก API เพื่อ assign patient กับ device
-      console.log("Assigning device:", deviceId, "to patient:", patientData);
-      
-      // Refresh ข้อมูลหลัง assign สำเร็จ
-      await fetchSensors();
-      
-      // ปิด modal
-      setIsModalOpen(false);
+      const response = await fetch('/api/assign-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+           device_id: assignData.deviceId,
+           hn: assignData.hn,
+           patient_name: assignData.patientName,
+           // ... fields อื่นๆ
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        // ใช้ Toast notification แทน alert จะดูพรีเมียมกว่า (ถ้ามี lib)
+        alert(`✅ ${result.message}`);
+        fetchSensors();
+      } else {
+        alert(`❌ ${result.error}`);
+      }
     } catch (error) {
-      console.error("Failed to assign sensor:", error);
-      alert("ไม่สามารถบันทึกข้อมูลได้");
+      alert('❌ Connection Error');
     }
   };
 
-  // Fetch data เมื่อ component mount และทุก 3 วินาที
+  // --- 2. Effects ---
   useEffect(() => {
     fetchSensors();
-    const interval = setInterval(fetchSensors, 3000);
-    return () => clearInterval(interval);
+    const dataInterval = setInterval(fetchSensors, 5000);
+    const clockInterval = setInterval(() => setCurrentTime(new Date()), 1000); // นาฬิกาเดินทุกวินาที
+    
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(clockInterval);
+    };
   }, [fetchSensors]);
 
-  // คำนวณสถิติ
-  const totalPatients = sensors.filter(
-    (s) => s.status === "active" || s.status === "critical"
-  ).length;
-  const criticalCount = sensors.filter((s) => s.status === "critical").length;
+  // --- 3. Memoized Calculations & Filter ---
+  const stats = useMemo(() => {
+    return {
+      total: sensors.filter(s => s.status !== 'available').length,
+      critical: sensors.filter(s => s.status === 'critical').length,
+      available: sensors.filter(s => s.status === 'available').length
+    };
+  }, [sensors]);
 
+  const filteredSensors = useMemo(() => {
+    return sensors.filter(sensor => {
+      // Filter by Search
+      const searchLower = searchTerm.toLowerCase();
+      const matchSearch = 
+        sensor.patientName.toLowerCase().includes(searchLower) || 
+        sensor.hn.includes(searchLower) ||
+        sensor.location.toLowerCase().includes(searchLower);
+
+      // Filter by Tab
+      let matchTab = true;
+      if (activeTab === 'critical') matchTab = sensor.status === 'critical';
+      if (activeTab === 'active') matchTab = sensor.status === 'active' || sensor.status === 'critical';
+      if (activeTab === 'available') matchTab = sensor.status === 'available';
+
+      return matchSearch && matchTab;
+    });
+  }, [sensors, searchTerm, activeTab]);
+
+  // --- 4. Render UI ---
   return (
-    <div className="p-8 min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className={`p-2 rounded-xl transition-colors ${
-                error ? "bg-red-100 text-red-500" : "bg-blue-100 text-blue-600"
-              }`}
+      {/* Top Navigation Bar */}
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+          
+          {/* Logo & Title */}
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${error ? 'bg-red-50 text-red-500' : 'bg-blue-600 text-white'}`}>
+               {error ? <WifiOff size={24} /> : <Activity size={24} />}
+            </div>
+            <div>
+              <a href="/" target="_blank" rel="noopener noreferrer">
+                <h1 className="text-xl font-bold text-slate-900 leading-tight ">Smart Ward Monitor</h1>
+              </a>
+              <p className="text-xs text-slate-500 font-medium">VIP Ward 8 • Station A</p>
+            </div>
+          </div>
+
+          {/* Stats Summary Widget */}
+          <div className="flex bg-slate-100 p-1.5 rounded-xl gap-1">
+             <StatBadge label="Monitored" value={stats.total} color="bg-white text-blue-600 shadow-sm" />
+             <StatBadge 
+                label="Critical" 
+                value={stats.critical} 
+                color={stats.critical > 0 ? "bg-red-500 text-white animate-pulse" : "text-slate-400"} 
+                icon={stats.critical > 0 ? <BellRing size={12} /> : null}
+             />
+             <StatBadge label="Free" value={stats.available} color="text-slate-500" />
+          </div>
+
+          {/* Clock & User */}
+          <div className="text-right hidden md:block">
+            <div className="flex items-center justify-end gap-2 text-slate-700 font-mono text-xl font-bold">
+              <Clock size={20} className="text-blue-500" />
+              {currentTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <p className="text-xs text-slate-400">
+              {currentTime.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="p-6 max-w-[1600px] mx-auto">
+        
+        {/* Controls Toolbar */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+          
+          {/* Tabs */}
+          <div className="flex gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm overflow-x-auto w-full md:w-auto">
+            <TabButton active={activeTab === 'all'} onClick={() => setActiveTab('all')} label="All Devices" count={sensors.length} />
+            <TabButton active={activeTab === 'critical'} onClick={() => setActiveTab('critical')} label="Critical" count={stats.critical} isDanger />
+            <TabButton active={activeTab === 'available'} onClick={() => setActiveTab('available')} label="Available" count={stats.available} />
+          </div>
+
+          {/* Search & Actions */}
+          <div className="flex gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input 
+                type="text" 
+                placeholder="Search Patient Name, HN..." 
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md shadow-blue-200 transition-all active:scale-95 whitespace-nowrap"
             >
-              {error ? (
-                <WifiOff className="w-6 h-6" />
-              ) : (
-                <Activity className="w-6 h-6" />
-              )}
-            </div>
-            <span className="text-sm font-bold text-blue-600 uppercase tracking-wide">
-              {error ? "System Offline" : "Live Monitor"}
-            </span>
+              <Plus size={18} />
+              <span className="hidden sm:inline">Add Device</span>
+            </button>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-            Patient Monitor Station
-          </h1>
-          <p className="text-slate-500 font-medium">
-            Monitoring {DEVICE_LIST.length} Devices
-          </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="flex gap-3">
-          <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
-            <span className="block text-xs font-bold text-blue-400 uppercase">
-              Active
-            </span>
-            <span className="block text-2xl font-bold text-blue-600">
-              {loading ? "-" : totalPatients}
-            </span>
+        {/* Content Grid */}
+        {loading && sensors.length === 0 ? (
+           <div className="flex flex-col items-center justify-center h-96 text-slate-400">
+             <Loader2 className="w-12 h-12 animate-spin mb-4 text-blue-500" />
+             <p className="font-medium animate-pulse">Synchronizing Vital Signs...</p>
+           </div>
+        ) : error ? (
+           <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center max-w-lg mx-auto mt-12">
+             <WifiOff className="w-16 h-16 text-red-400 mx-auto mb-4" />
+             <h3 className="text-lg font-bold text-red-600">Connection Lost</h3>
+             <p className="text-red-500 mb-6">Unable to retrieve real-time data from the central server.</p>
+             <button onClick={fetchSensors} className="bg-red-100 hover:bg-red-200 text-red-700 px-6 py-2 rounded-full font-medium transition-colors">
+               Try Reconnecting
+             </button>
+           </div>
+        ) : filteredSensors.length === 0 ? (
+           <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
+             <Filter className="w-10 h-10 mb-2 opacity-50" />
+             <p>No devices match your filter.</p>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+             {filteredSensors.map((sensor) => (
+                <div key={sensor.id} className="transition-all duration-300 hover:scale-[1.02]">
+                   <SensorCard {...sensor} />
+                </div>
+             ))}
           </div>
+        )}
+      </main>
 
-          {criticalCount > 0 && (
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-red-200">
-              <span className="block text-xs font-bold text-red-400 uppercase flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Critical
-              </span>
-              <span className="block text-2xl font-bold text-red-600">
-                {criticalCount}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Add Sensor Button */}
-      <div className="mb-6">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          เพิ่มเซนเซอร์
-        </button>
-      </div>
-
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-          <Loader2 className="w-10 h-10 animate-spin mb-4 text-blue-400" />
-          <p>Connecting to Sensors...</p>
-        </div>
-      ) : (
-        /* Sensor Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {sensors.map((sensor) => (
-            <SensorCard key={sensor.id} {...sensor} />
-          ))}
-        </div>
-      )}
-
-      {/* Assign Sensor Modal */}
+      {/* Modal */}
       <AssignSensorModal
         devices={sensors}
         onAssign={handleAssign}
@@ -216,5 +261,38 @@ export default function PatientMonitor() {
         onClose={() => setIsModalOpen(false)}
       />
     </div>
+  );
+}
+
+// --- Sub Components for cleaner JSX ---
+
+function StatBadge({ label, value, color, icon }) {
+  return (
+    <div className={`px-4 py-2 rounded-lg flex flex-col items-center min-w-[90px] ${color}`}>
+      <span className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
+        {icon} {label}
+      </span>
+      <span className="text-xl font-bold leading-none mt-1">{value}</span>
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, label, count, isDanger }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap
+        ${active 
+          ? (isDanger ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700 shadow-sm') 
+          : 'text-slate-500 hover:bg-slate-50'
+        }
+      `}
+    >
+      {label}
+      <span className={`text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white/50' : 'bg-slate-100'}`}>
+        {count}
+      </span>
+    </button>
   );
 }

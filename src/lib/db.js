@@ -1,5 +1,8 @@
 // lib/db.js
 import { Pool } from 'pg';
+//  1. เช็ค Environment: ถ้าเป็น Production ให้ใช้ SSL แบบยอมรับ Self-signed ได้
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 const pool = new Pool({
     DATABASE_URL: process.env.DATABASE_URL,
@@ -11,7 +14,7 @@ const pool = new Pool({
   max: 10, // จำนวน connection สูงสุดใน pool
   idleTimeoutMillis: 30000, // connection idle 30 วิแล้วตัด
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: true }   // ← บังคับใช้ SSL
+  ssl: isProduction ? { rejectUnauthorized: false } : false   // ← บังคับใช้ SSL ใน Production และยอมรับ Self-signed
 });
 
 // ทดสอบการเชื่อมต่อ
